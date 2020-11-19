@@ -1,15 +1,12 @@
-def convert(number):
-    result = ""
-    if number % 3 == 0:
-        result = result + "Pling"
+def convert(num):
+    res = ""
+    if num % 3 == 0:
+        res += "Pling"
 
-    if number % 5 == 0:
-        result = result + "Plang"
+    if num % 5 == 0:
+        res += "Plang"
 
-    if number % 7 == 0:
-        result = result + "Plong"
-
-    if len(result) == 0:
-        result = str(number)
-
-    return result
+    if num % 7 == 0:
+        res += "Plong"
+ 
+    return res if len(res) != 0 else str(num)
