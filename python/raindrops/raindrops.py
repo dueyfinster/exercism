@@ -9,4 +9,4 @@ def convert(num):
     if num % 7 == 0:
         res += "Plong"
  
-    return res if len(res) != 0 else str(num)
+    return res if res else str(num)
