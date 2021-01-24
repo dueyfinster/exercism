@@ -11,19 +11,30 @@ steps:
   - pytest
 
 - name: Slack Notifications
-    image: plugins/slack
-    settings:
-      channel: dev
-      link_names: true
-      template: >
-        {{#failure build.status}}
-          Broken build of `{{repo.name}}:{{build.branch}}` {{build.author}} with <${DRONE_COMMIT_LINK}|#{{truncate build.commit 8}}> <@neil>
-          :new: :zombie: {{build.message}}
-        {{/failure}}
-        :stopwatch: {{ since build.started}}
-        :gear: {{build.link}}
+  image: plugins/slack
+  settings:
+    channel: dev
+    link_names: true
+    template: >
+      {{#failure build.status}}
+        Broken build of `{{repo.name}}:{{build.branch}}` {{build.author}} with <${DRONE_COMMIT_LINK}|#{{truncate build.commit 8}}> <@neil>
+        :new: :zombie: {{build.message}}
+      {{/failure}}
+      :stopwatch: {{ since build.started}}
+      :gear: {{build.link}}
     environment:
       SLACK_WEBHOOK:
         from_secret: slack_webhook
     when:
       status: failure
+
+#---
+#kind: pipeline
+#name: java-11
+#
+#- name: test
+#  image: gradle:jdk11
+#  commands:
+#  - cd java
+#  - gradle assemble
+#  - gradle check
