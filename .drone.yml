@@ -1,0 +1,11 @@
+---
+kind: pipeline
+name: python-3-9
+
+steps:
+- name: test
+  image: python:3.9
+  commands:
+  - cd python
+  - pip install -r requirements.txt
+  - pytest
