@@ -9,3 +9,21 @@ steps:
   - cd python
   - pip install -r requirements.txt
   - pytest
+
+- name: Slack Notifications
+    image: plugins/slack
+    settings:
+      channel: dev
+      link_names: true
+      template: >
+        {{#failure build.status}}
+          Broken build of `{{repo.name}}:{{build.branch}}` {{build.author}} with <${DRONE_COMMIT_LINK}|#{{truncate build.commit 8}}> <@neil>
+          :new: :zombie: {{build.message}}
+        {{/failure}}
+        :stopwatch: {{ since build.started}}
+        :gear: {{build.link}}
+    environment:
+      SLACK_WEBHOOK:
+        from_secret: slack_webhook
+    when:
+      status: failure
