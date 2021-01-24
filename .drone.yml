@@ -22,11 +22,11 @@ steps:
       {{/failure}}
       :stopwatch: {{ since build.started}}
       :gear: {{build.link}}
-    environment:
-      SLACK_WEBHOOK:
-        from_secret: slack_webhook
-    when:
-      status: failure
+  environment:
+    SLACK_WEBHOOK:
+      from_secret: slack_webhook
+  when:
+    status: failure
 
 #---
 #kind: pipeline
