@@ -28,13 +28,13 @@ steps:
     when:
       status: failure
 
----
-kind: pipeline
-name: java-11
-
-- name: test
-  image: gradle:jdk11
-  commands:
-  - cd java
-  - gradle assemble
-  - gradle check
+#---
+#kind: pipeline
+#name: java-11
+#
+#- name: test
+#  image: gradle:jdk11
+#  commands:
+#  - cd java
+#  - gradle assemble
+#  - gradle check
