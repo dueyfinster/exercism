@@ -1,0 +1,220 @@
+name: Test Solutions
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+jobs:
+  changes:
+    name: Detect changed languages
+    runs-on: ubuntu-latest
+    outputs:
+      bash: ${{ steps.filter.outputs.bash }}
+      elisp: ${{ steps.filter.outputs.elisp }}
+      elixir: ${{ steps.filter.outputs.elixir }}
+      go: ${{ steps.filter.outputs.go }}
+      java: ${{ steps.filter.outputs.java }}
+      python: ${{ steps.filter.outputs.python }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed paths
+        id: filter
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            base_sha="${{ github.event.pull_request.base.sha }}"
+          elif [[ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]]; then
+            base_sha="${{ github.event.before }}"
+          else
+            base_sha="$(git rev-list --max-parents=0 HEAD)"
+          fi
+
+          git diff --name-only "$base_sha" "${{ github.sha }}" > changed-files.txt
+
+          flag_language() {
+            local language="$1"
+            if grep -Eq "^(solutions/${language}/|\\.github/workflows/test\\.yml$)" changed-files.txt; then
+              echo "${language}=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "${language}=false" >> "$GITHUB_OUTPUT"
+            fi
+          }
+
+          flag_language bash
+          flag_language elisp
+          flag_language elixir
+          flag_language go
+          flag_language java
+          flag_language python
+
+  bash:
+    name: Bash tests
+    needs: changes
+    if: needs.changes.outputs.bash == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Bats
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes bats
+
+      - name: Run Bats tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r test_file; do
+            exercise_dir="$(dirname "$test_file")"
+            (
+              cd "$exercise_dir"
+              bats "$(basename "$test_file")"
+            )
+          done < <(find solutions/bash -name '*_test.sh' -print)
+
+  elisp:
+    name: Emacs Lisp tests
+    needs: changes
+    if: needs.changes.outputs.elisp == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Emacs
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes emacs-nox
+
+      - name: Run ERT tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r test_file; do
+            exercise_dir="$(dirname "$test_file")"
+            (
+              cd "$exercise_dir"
+              emacs --batch -l "$(basename "$test_file")" -f ert-run-tests-batch-and-exit
+            )
+          done < <(find solutions/elisp -name '*-test.el' -print)
+
+  elixir:
+    name: Elixir tests
+    needs: changes
+    if: needs.changes.outputs.elixir == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Elixir
+        uses: erlef/setup-beam@v1
+        with:
+          otp-version: '26'
+          elixir-version: '1.16'
+
+      - name: Run ExUnit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r test_file; do
+            exercise_dir="$(dirname "$test_file")"
+            (
+              cd "$exercise_dir"
+              elixir "$(basename "$test_file")"
+            )
+          done < <(find solutions/elixir -name '*_test.exs' -print)
+
+  java:
+    name: Java tests
+    needs: changes
+    if: needs.changes.outputs.java == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '11'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '6.9.4'
+
+      - name: Run Gradle tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r build_file; do
+            exercise_dir="$(dirname "$build_file")"
+            (
+              cd "$exercise_dir"
+              gradle test
+            )
+          done < <(find solutions/java -name build.gradle -print)
+
+  go:
+    name: Go tests
+    needs: changes
+    if: needs.changes.outputs.go == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Run Go tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          test_files="$(find solutions/go -name '*_test.go' -print)"
+
+          if [[ -z "$test_files" ]]; then
+            echo "No Go exercise tests found."
+            exit 0
+          fi
+
+          while IFS= read -r test_dir; do
+            (
+              cd "$test_dir"
+              go test ./...
+            )
+          done < <(printf '%s\n' "$test_files" | xargs -n1 dirname | sort -u)
+
+  python:
+    name: Python tests
+    needs: changes
+    if: needs.changes.outputs.python == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: python -m pip install -r solutions/python/requirements.txt
+
+      - name: Run pytest
+        working-directory: solutions/python
+        run: python -m pytest
